@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Key System with CAPTCHA and Copy</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1e1e2f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: white;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .frame {
+      background: linear-gradient(135deg, #5f72bd, #9b23ea);
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+      padding: 30px;
+      width: 300px;
+      text-align: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    .frame.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    button {
+      background-color: #4e8cff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover:enabled {
+      background-color: #3b6fd8;
+    }
+
+    button:disabled {
+      background-color: #666;
+      cursor: not-allowed;
+    }
+
+    #proceedBtn {
+      background-color: #28a745;
+    }
+
+    #keyBox {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 10px;
+      background-color: white;
+      color: black;
+      font-weight: bold;
+      word-wrap: break-word;
+      user-select: all;
+      font-family: monospace;
+      font-size: 18px;
+      letter-spacing: 1.5px;
+    }
+
+    #captchaCode {
+      margin: 15px 0;
+      padding: 10px 0;
+      background: rgba(255 255 255 / 0.15);
+      border-radius: 10px;
+      user-select: none;
+      font-weight: bold;
+      font-family: monospace;
+      text-transform: uppercase;
+      letter-spacing: 6px;
+      display: inline-block;
+      animation: flicker 3s infinite alternate;
+    }
+
+    @keyframes flicker {
+      0%, 100% {opacity: 1;}
+      50% {opacity: 0.7;}
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      font-size: 18px;
+      text-transform: uppercase;
+      box-sizing: border-box;
+      margin-top: 5px;
+    }
+
+    #captchaProgress {
+      margin-top: 10px;
+      color: white;
+      font-weight: 600;
+    }
+
+    #copyBtn {
+      background-color: #17a2b8;
+      margin-top: 10px;
+    }
+
+    #copyBtn:hover:enabled {
+      background-color: #138496;
+    }
+
+    .logo {
+      width: 100px;
+      margin: 15px auto 0;
+      display: block;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="initial" class="frame active">
+    <h2>Astro Hub Key System</h2>
+    <img src="https://i.postimg.cc/mg6J785n/IMG-5699.png" alt="Astro Hub Logo" class="logo">
+    <button onclick="createCaptchaFrame()">Get Key</button>
+  </div>
+
+  <div id="keyFrame" class="frame">
+    <h2>Your Key</h2>
+    <div id="keyBox">Generating key...</div>
+    <button id="copyBtn" onclick="copyKey()">Copy</button>
+  </div>
+
+  <script>
+    let captchaCount = 0;
+    const totalCaptchas = 3;
+
+    const fonts = [
+      "'Courier New', Courier, monospace",
+      "'Arial Black', Gadget, sans-serif",
+      "'Comic Sans MS', cursive, sans-serif",
+      "'Lucida Console', Monaco, monospace",
+      "'Tahoma', Geneva, sans-serif",
+      "'Trebuchet MS', Helvetica, sans-serif",
+      "'Verdana', Geneva, sans-serif",
+      "'Georgia', serif",
+      "'Impact', Charcoal, sans-serif",
+      "'Palatino Linotype', 'Book Antiqua', Palatino, serif"
+    ];
+
+    function switchFrame(fromId, toId, callback) {
+      const from = document.getElementById(fromId);
+      const to = document.getElementById(toId);
+      from.classList.remove('active');
+      setTimeout(() => {
+        to.classList.add('active');
+        if (callback) callback();
+      }, 500);
+    }
+
+    function generateCaptcha(length = 6) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let captcha = '';
+      for (let i = 0; i < length; i++) {
+        captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return captcha;
+    }
+
+    function renderCaptchaWithFonts(captcha) {
+      return captcha.split('').map(char => {
+        const font = fonts[Math.floor(Math.random() * fonts.length)];
+        return `<span style="font-family: ${font};">${char}</span>`;
+      }).join('');
+    }
+
+    function createCaptchaFrame() {
+      captchaCount = 0;
+
+      if (document.getElementById('captchaFrame')) {
+        switchFrame('initial', 'captchaFrame');
+        setupCaptcha();
+        return;
+      }
+
+      const captchaFrame = document.createElement('div');
+      captchaFrame.id = 'captchaFrame';
+      captchaFrame.className = 'frame';
+      captchaFrame.innerHTML = `
+        <h2>Verify You're Human</h2>
+        <div id="captchaCode"></div>
+        <input type="text" id="captchaInput" placeholder="Type the code above" autocomplete="off" />
+        <button id="proceedBtn" disabled>Continue</button>
+        <button id="refreshCaptchaBtn" style="margin-top: 10px; background-color: #ffc107;">Stuck?</button>
+        <p id="captchaProgress"></p>
+      `;
+      document.body.appendChild(captchaFrame);
+
+      switchFrame('initial', 'captchaFrame');
+      setupCaptcha();
+    }
+
+    function setupCaptcha() {
+      const refreshBtn = document.getElementById('refreshCaptchaBtn');
+      if (refreshBtn) {
+        refreshBtn.onclick = () => setupCaptcha();
+      }
+      const captchaCodeEl = document.getElementById('captchaCode');
+      const captchaInput = document.getElementById('captchaInput');
+      const proceedBtn = document.getElementById('proceedBtn');
+      const infoText = document.getElementById('captchaProgress');
+
+      const captchaCode = generateCaptcha();
+      captchaCodeEl.innerHTML = renderCaptchaWithFonts(captchaCode);
+
+      proceedBtn.disabled = true;
+      captchaInput.value = '';
+      captchaInput.focus();
+
+      if (infoText) {
+        infoText.textContent = `Captcha ${captchaCount + 1} of ${totalCaptchas}`;
+      }
+
+      captchaInput.oninput = () => {
+        if (captchaInput.value.toUpperCase() === captchaCode) {
+          proceedBtn.disabled = false;
+        } else {
+          proceedBtn.disabled = true;
+        }
+      };
+
+      proceedBtn.onclick = () => {
+        captchaCount++;
+
+        if (captchaCount >= totalCaptchas) {
+          switchFrame('captchaFrame', 'keyFrame', generateKey);
+        } else {
+          setupCaptcha();
+        }
+      };
+    }
+
+    function generateKey() {
+      const required = ['a', '6', 'Z', '7', '9', '='];
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+[]{}|;:,./<>?';
+      let keyArray = [];
+
+      for (let i = 0; i < 30; i++) {
+        const char = characters.charAt(Math.floor(Math.random() * characters.length));
+        keyArray.push(char);
+      }
+
+      required.forEach(char => {
+        const index = Math.floor(Math.random() * (keyArray.length + 1));
+        keyArray.splice(index, 0, char);
+      });
+
+      const finalKey = keyArray.join('');
+      document.getElementById('keyBox').textContent = finalKey;
+    }
+
+    function copyKey() {
+      const keyText = document.getElementById('keyBox').textContent;
+      navigator.clipboard.writeText(keyText).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.disabled = true;
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 1500);
+      }).catch(() => {
+        alert('Failed to copy to clipboard');
+      });
+    }
+  </script>
+</body>
+</html>
